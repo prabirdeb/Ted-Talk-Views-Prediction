@@ -258,20 +258,15 @@ import streamlit as st # All the text cell will be displayed after this import s
 st.title("Ted Talk Videos Views Prediction")
 st.header("Note for Topic Cat, Speaker Cat and Title Cat: Highly Favourite:2, Medium Favourite:1, Least Favourite:0 ")
 
-d = st.number_input("Duration (seconds)")
-duration=d.title() # .title() is used to get the input
+duration = st.number_input("Duration (seconds)")
 
-to= st.number_input("Topic Cat (0, 1 or 2)")
-topics_cat=to.title() # .title() is used to get the input
+topics_cat= st.number_input("Topic Cat (0, 1 or 2)")
 
-y = st.number_input("Years Run")
-years_run=y.title() # .title() is used to get the input
+years_run = st.number_input("Years Run")
 
-s = st.number_input("Speaker Cat (0, 1 or 2)")
-speaker_cat=s.title() # .title() is used to get the input
+speaker_cat = st.number_input("Speaker Cat (0, 1 or 2)")
 
-t = st.number_input("Title Cat (0, 1 or 2)")
-title_cat=t.title() # .title() is used to get the input
+title_cat = st.number_input("Title Cat (0, 1 or 2)")
 
 ans = final_svr(duration, topics_cat, years_run, speaker_cat, title_cat)
 
