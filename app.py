@@ -7,20 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/13IaV7JVbAZzvig40ZxqGYBy1V1eS4IfF
 
 **Ted Talk Views Prediction**
-
-# **Exploration and Pre-processing of Data**
-
-This involves following steps to transform raw data into quality data for the ml model
-
-## **1. Connection with the Data**
-
-Here, we are provided with a dataset on the details of Ted Talk Videos.
-
-Thus, the dataset is actually a collection of experiences about different Ted Talk videos. 
-
-Now, we need to **decode the set of experiences** to build a model for Ted Talk Videos Views Prediction.
-
-At first, we import the libraries or functions for **making our journey easy** and then **get connected** to the set of experiences.
 """
 
 # Importing libraries
@@ -47,322 +33,187 @@ from nltk.corpus import stopwords
 # Reading the data as pandas dataframe
 ted_talk_df=pd.read_csv('data_ted_talks_half.csv')
 
-"""## **2. Cleaning the Data**
+def data_prep():
+  global ted_talk_df
 
-In this step, we treat null, missing, "?" or duplicate values.
-
-When there is any string containing a Python literal in any of the important feature, we also evaluate them.
-
-We do encoding of categorical features to make it usuable in the model.
-
-We also create new feature when found important during the analysis.
-
-Thus, we get a clean experience set with important features. 
-
-We check the statistics further on clean data.
-
-###4.1 Creating Dataset with Relavant Features
-"""
-
-# Finding out the relavant features from the deeper understanding of the data
-relavant_features=['occupations', 'views', 'published_date',
+  # Finding out the relavant features from the deeper understanding of the data
+  relavant_features=['occupations', 'views', 'published_date',
                    'native_lang', 'duration', 'topics','speaker_1','title']
 
-# Creating new df with relavant features
-ted_talk_df_clean=ted_talk_df[relavant_features]
+  # Creating new df with relavant features
+  ted_talk_df_clean=ted_talk_df[relavant_features]
 
-"""###4.2 Treating the missing, null or duplicate values"""
+  # Imputaion of null values of occupation with emty dict string
+  ted_talk_df_clean['occupations']=ted_talk_df_clean['occupations'].fillna("{0:[]}")
 
-# Checking is there any duplicate value
-len(ted_talk_df_clean[ted_talk_df_clean.duplicated()])
+  # There are python literals as string in the categorical columns which need to be treated
+  for col in ['occupations', 'topics']:
+    ted_talk_df_clean[col]=[ast.literal_eval(i) for i in ted_talk_df_clean[col]]
 
-# checking the no. of null values in each column
-print(ted_talk_df_clean.isnull().sum())
+  # extracting the list from the dict of occupations
+  ted_talk_df_clean['occupations']=[i.get(0) for i in ted_talk_df_clean['occupations']]
 
-ted_talk_df_clean.occupations
+  # Datetime is appearing as string and we are converting to datetime
+  ted_talk_df_clean['published_date']=ted_talk_df_clean['published_date'].apply(lambda x : datetime.strptime(x,'%Y-%m-%d'))
 
-# Imputaion of null values of occupation with emty dict string
-ted_talk_df_clean['occupations']=ted_talk_df_clean['occupations'].fillna("{0:[]}")
+  # Feature engineering on published date to to extract years run
+  ted_talk_df_clean['published_year']=ted_talk_df_clean['published_date'].apply(lambda x : x.year)
+  ted_talk_df_clean['base_year']=2021
+  ted_talk_df_clean['years_run']=(ted_talk_df_clean['base_year']-ted_talk_df_clean['published_year'])
 
-print(ted_talk_df_clean.isnull().sum())
+  ted_talk_df_clean.drop(['published_date','base_year','published_year'], axis = 1, inplace=True)
 
-ted_talk_df_clean.shape
+  # There are very few experiences (only 1-27) for most of the 'native_lang' as compared to 'en' with count 3975. 
+  # So, we are removing the exceptions in 'native_lang' category and creating a conditional df only for 'en'
+  ted_talk_df_clean=ted_talk_df_clean.loc[(ted_talk_df_clean['native_lang']=='en')].reset_index()
+  ted_talk_df_clean.drop('index', axis = 1, inplace=True)
 
-"""###4.3 Evaluation of Python Literals"""
+  # Thus we are dropping the 'native_lang' column
+  ted_talk_df_clean.drop('native_lang', axis = 1, inplace=True)
 
-# numerical_features
-ted_talk_df_clean.describe().columns
+  # There are mixture of words in topics and occupations column.
+  # Lets find out the main topics
+  main_topics=[]
+  for k in range(len(ted_talk_df_clean.topics)):
+    common_terms=list(set([i[:3] for i in ted_talk_df_clean.occupations[k]]).intersection(set([i[:3] for i in ted_talk_df_clean.topics[k]])))
+    
+    if len(common_terms)!=0:
+      for i in range(len(common_terms)):
+        pattern = re.compile("%s" % common_terms[i])
+        topics=[x for x in ted_talk_df_clean.topics[k] if pattern.match(x)][0]
+    else:
+      topics='unknown'
 
-# categorical_features
-ted_talk_df_clean.describe(include=['object','category']).columns
+    main_topics.append(topics)
 
-print(ted_talk_df_clean.occupations.values[0])
-print(ted_talk_df_clean.published_date.values[0])
-print(ted_talk_df_clean.native_lang.values[0])
-print(ted_talk_df_clean.topics.values[0])
-print(ted_talk_df_clean.speaker_1.values[0])
-print(ted_talk_df_clean.title.values[0])
+  ted_talk_df_clean['main_topics']=main_topics
 
-print(type(ted_talk_df_clean.occupations.values[0]))
-print(type(ted_talk_df_clean.published_date.values[0]))
-print(type(ted_talk_df_clean.native_lang.values[0]))
-print(type(ted_talk_df_clean.topics.values[0]))
-print(type(ted_talk_df_clean.speaker_1.values[0]))
-print(type(ted_talk_df_clean.title.values[0]))
+  ted_talk_df_clean.drop(['occupations'], axis = 1, inplace=True)
 
-# There are python literals as string in the categorical columns which need to be treated
-for col in ['occupations', 'topics']:
-  ted_talk_df_clean[col]=[ast.literal_eval(i) for i in ted_talk_df_clean[col]]
-
-print(type(ted_talk_df_clean.occupations.values[0]))
-print(type(ted_talk_df_clean.published_date.values[0]))
-print(type(ted_talk_df_clean.native_lang.values[0]))
-print(type(ted_talk_df_clean.topics.values[0]))
-print(type(ted_talk_df_clean.speaker_1.values[0]))
-print(type(ted_talk_df_clean.title.values[0]))
-
-# extracting the list from the dict of occupations
-ted_talk_df_clean['occupations']=[i.get(0) for i in ted_talk_df_clean['occupations']]
-
-print(type(ted_talk_df_clean.occupations.values[0]))
-
-# Datetime is appearing as string and we are converting to datetime
-ted_talk_df_clean['published_date']=ted_talk_df_clean['published_date'].apply(lambda x : datetime.strptime(x,'%Y-%m-%d'))
-
-"""###4.4 Feature Engineering"""
-
-# Feature engineering on published date to to extract years run
-ted_talk_df_clean['published_year']=ted_talk_df_clean['published_date'].apply(lambda x : x.year)
-ted_talk_df_clean['base_year']=2021
-ted_talk_df_clean['years_run']=(ted_talk_df_clean['base_year']-ted_talk_df_clean['published_year'])
-
-ted_talk_df_clean.drop(['published_date','base_year','published_year'], axis = 1, inplace=True)
-
-ted_talk_df_clean.head(2)
-
-"""###4.5 Encoding of Categorical Features"""
-
-# There are very few experiences (only 1-27) for most of the 'native_lang' as compared to 'en' with count 3975. 
-# So, we are removing the exceptions in 'native_lang' category and creating a conditional df only for 'en'
-ted_talk_df_clean=ted_talk_df_clean.loc[(ted_talk_df_clean['native_lang']=='en')].reset_index()
-ted_talk_df_clean.drop('index', axis = 1, inplace=True)
-
-"""**Now english has become the main feature of our dataset. Thus our model will predict the ted talk views only for english language**"""
-
-# Thus we are dropping the 'native_lang' column
-ted_talk_df_clean.drop('native_lang', axis = 1, inplace=True)
-
-ted_talk_df_clean.shape
-
-ted_talk_df_clean.head(2)
-
-# There are mixture of words in topics and occupations column.
-# Lets find out the main topics
-main_topics=[]
-for k in range(len(ted_talk_df_clean.topics)):
-  common_terms=list(set([i[:3] for i in ted_talk_df_clean.occupations[k]]).intersection(set([i[:3] for i in ted_talk_df_clean.topics[k]])))
+  topics_df=pd.DataFrame(ted_talk_df_clean.groupby('main_topics')['views'].mean().sort_values(ascending=False))
   
-  if len(common_terms)!=0:
-    for i in range(len(common_terms)):
-      pattern = re.compile("%s" % common_terms[i])
-      topics=[x for x in ted_talk_df_clean.topics[k] if pattern.match(x)][0]
-  else:
-    topics='unknown'
+  # There is a great portion of 'unkown' topics which need to be treated
+  # Now, we can divide topics into three categories: Highly Favourite:2, Medium Favourite:1, Least Favourite:0
+  topics_df.rename(columns={'views':'views_mean'},inplace=True)
+  least_favourite=set(topics_df[(topics_df.views_mean<0.2*10**7)].index)-{'unknown'}
+  medium_favourite=set(topics_df[(topics_df.views_mean>=0.2*10**7) & (topics_df.views_mean< 0.5*10**7)].index)-{'unknown'}
+  highly_favourite=set(topics_df[(topics_df.views_mean>=0.5*10**7)].index)-{'unknown'}
 
-  main_topics.append(topics)
+  topics_cat=[]
+  for k in ted_talk_df_clean.topics:
+    topics_least_favourite_match=len(list(set(k).intersection(least_favourite)))
+    topics_medium_favourite_match=len(list(set(k).intersection(medium_favourite)))
+    topics_highly_favourite_match=len(list(set(k).intersection(highly_favourite)))
 
-print(main_topics)
+    if (topics_least_favourite_match>topics_medium_favourite_match) & (topics_least_favourite_match>topics_highly_favourite_match):
+      topics_cat.append(0)
+    elif (topics_medium_favourite_match>topics_least_favourite_match) & (topics_medium_favourite_match>topics_highly_favourite_match):
+      topics_cat.append(1)
+    else:
+      topics_cat.append(2)
 
-len(list(set(main_topics)))
+  ted_talk_df_clean['topics_cat']=topics_cat
 
-ted_talk_df_clean['main_topics']=main_topics
+  ted_talk_df_clean.drop(['topics', 'main_topics'], axis = 1, inplace=True)
 
-ted_talk_df_clean[(ted_talk_df_clean['main_topics']=='unknown')][:2]
+  speaker_df=pd.DataFrame(ted_talk_df_clean.groupby('speaker_1')['views'].mean().sort_values(ascending=False))
+  
+  # Thus we can divide speakers into three categories: Highly Famous:2, Medium Famous:1, Least Famous:0
+  speaker_df.rename(columns={'views':'views_mean'},inplace=True)
+  ted_talk_df_clean = ted_talk_df_clean.merge(speaker_df,on = 'speaker_1',how = 'left')
+  ted_talk_df_clean['speaker_cat'] = ted_talk_df_clean['views_mean'].apply(lambda x : 0 if x < 0.4*10**7 else (1 if 0.4*10**7 <= x < 0.8*10**7 else 2))
 
-ted_talk_df_clean['main_topics'].value_counts()
+  ted_talk_df_clean.drop(['speaker_1','views_mean'],axis=1,inplace=True)
 
-ted_talk_df_clean.drop(['occupations'], axis = 1, inplace=True)
+  # Lets understand the sentiment of the title and encode 
 
-ted_talk_df_clean.head(2)
+  ted_talk_df_clean['title'] = ted_talk_df_clean['title'].apply(text_process)
 
-topics_df=pd.DataFrame(ted_talk_df_clean.groupby('main_topics')['views'].mean().sort_values(ascending=False))
-topics_df.plot.bar()
+  # Extracting the highly attractive words from title
+  highly=''
+  for k in ted_talk_df_clean[(ted_talk_df_clean['views']>0.8*10**7)]['title'].values:
+    highly=highly+' '+k
+  highly_attractive=set(highly.split())
 
-# In the above barplot, we can find a strong relation of topics with average views
-# There is a great portion of 'unkown' topics which need to be treated
-# Now, we can divide topics into three categories: Highly Favourite:2, Medium Favourite:1, Least Favourite:0
-topics_df.rename(columns={'views':'views_mean'},inplace=True)
-least_favourite=set(topics_df[(topics_df.views_mean<0.2*10**7)].index)-{'unknown'}
-medium_favourite=set(topics_df[(topics_df.views_mean>=0.2*10**7) & (topics_df.views_mean< 0.5*10**7)].index)-{'unknown'}
-highly_favourite=set(topics_df[(topics_df.views_mean>=0.5*10**7)].index)-{'unknown'}
+  # Extracting the medium attractive words from title
+  medium=''
+  for k in ted_talk_df_clean[(ted_talk_df_clean['views']>=0.4*10**7) & (ted_talk_df_clean['views']<=0.8*10**7)]['title'].values:
+    medium=medium+' '+k
+  medium_attractive=set(medium.split())
 
-topics_cat=[]
-for k in ted_talk_df_clean.topics:
-  topics_least_favourite_match=len(list(set(k).intersection(least_favourite)))
-  topics_medium_favourite_match=len(list(set(k).intersection(medium_favourite)))
-  topics_highly_favourite_match=len(list(set(k).intersection(highly_favourite)))
+  # Extracting the least attractive words from title
+  least=''
+  for k in ted_talk_df_clean[(ted_talk_df_clean['views']<0.4*10**7)]['title'].values:
+    least=least+' '+k
+  least_attractive=set(least.split())
 
-  if (topics_least_favourite_match>topics_medium_favourite_match) & (topics_least_favourite_match>topics_highly_favourite_match):
-    topics_cat.append(0)
-  elif (topics_medium_favourite_match>topics_least_favourite_match) & (topics_medium_favourite_match>topics_highly_favourite_match):
-    topics_cat.append(1)
-  else:
-    topics_cat.append(2)
+  highly_attractive_words=highly_attractive-highly_attractive.intersection(medium_attractive)-highly_attractive.intersection(least_attractive)
+  medium_attractive_words=medium_attractive-medium_attractive.intersection(highly_attractive)-least_attractive.intersection(least_attractive)
+  least_attractive_words=least_attractive-least_attractive.intersection(medium_attractive)-least_attractive.intersection(highly_attractive)
 
-ted_talk_df_clean['topics_cat']=topics_cat
+  # Title encoding
+  title_cat=[]
+  for k in ted_talk_df_clean.title:
+    least_attractive_words_match=len(list(set(k.split()).intersection(least_attractive_words)))
+    medium_attractive_words_match=len(list(set(k.split()).intersection(medium_attractive_words)))
+    highly_attractive_words_match=len(list(set(k.split()).intersection(highly_attractive_words)))
 
-ted_talk_df_clean.drop(['topics', 'main_topics'], axis = 1, inplace=True)
+    if (least_attractive_words_match>medium_attractive_words_match) & (least_attractive_words_match>highly_attractive_words_match):
+      title_cat.append(0)
+    elif (medium_attractive_words_match>least_attractive_words_match) & (medium_attractive_words_match>highly_attractive_words_match):
+      title_cat.append(1)
+    else:
+      title_cat.append(2)
 
-print(highly_favourite)
+  ted_talk_df_clean['title_cat']=title_cat
 
-print(medium_favourite)
+  ted_talk_df_clean.drop(['title'],axis=1,inplace=True)
 
-print(least_favourite)
+  # Arranging dependent feature in the last column
+  dependent=ted_talk_df_clean.views.values
+  ted_talk_df_clean.drop(['views'],axis=1,inplace=True)
+  ted_talk_df_clean['views']=dependent    
 
-ted_talk_df_clean.head(2)
+  # There are only few experiences with more than 1*10^7 views. Thus we can remove these experiences
+  ted_talk_df_clean=ted_talk_df_clean[ted_talk_df_clean['views'] < 1*10**7]
 
-speaker_df=pd.DataFrame(ted_talk_df_clean.groupby('speaker_1')['views'].mean().sort_values(ascending=False))
-speaker_df.plot.bar()
+  # Creating dependent(output) and independent(input) variable
+  dependent_variable='views'
+  independent_variables=list(set(ted_talk_df_clean.describe().columns)-{dependent_variable})
 
-# In the above bar plot, we can find there is a strong relationship of speaker with views.
-# Thus we can divide speakers into three categories: Highly Famous:2, Medium Famous:1, Least Famous:0
-speaker_df.rename(columns={'views':'views_mean'},inplace=True)
-ted_talk_df_clean = ted_talk_df_clean.merge(speaker_df,on = 'speaker_1',how = 'left')
-ted_talk_df_clean['speaker_cat'] = ted_talk_df_clean['views_mean'].apply(lambda x : 0 if x < 0.4*10**7 else (1 if 0.4*10**7 <= x < 0.8*10**7 else 2))
+  ted_talk_df_clean[list(set(independent_variables)-{'duration'})]
 
-ted_talk_df_clean["speaker_cat"].value_counts()
+  # Creating normalized input and output dataset
+  X = np.log10(ted_talk_df_clean[['duration']])
+  X[list(set(independent_variables)-{'duration'})]=ted_talk_df_clean[list(set(independent_variables)-{'duration'})]
 
-ted_talk_df_clean[(ted_talk_df_clean['speaker_cat']==2)]['speaker_1'][:5]
+  y = np.log10(ted_talk_df_clean[dependent_variable])
 
-ted_talk_df_clean.drop(['speaker_1','views_mean'],axis=1,inplace=True)
+  # Imputation of infinite values with zero
+  for col in X.columns:
+    X[col].replace([np.inf, -np.inf], 0, inplace=True)
 
-# Lets understand the sentiment of the title and encode 
+  y.replace([np.inf, -np.inf], 0, inplace=True)
+
+  # Splitting of the data into Train and Test
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+
+  # Standardization of Input Data
+  scaler = StandardScaler()
+  X_train = scaler.fit_transform(X_train)
+  X_test = scaler.transform(X_test)
+
+  # Final model training
+  model_svr_final=SVR(C= 6, gamma= 0.1)
+  model_svr_final.fit(X_train, y_train)
+
+  return X_train, scaler, model_svr_final
+
 # We can divide title into three categories: Highly Attractive:2, Medium Attractive:1, Least Attractive:0
 def text_process(text):
     nopunc =[char for char in text if char not in string.punctuation]
     nopunc=''.join(nopunc)
     return ' '.join([word for word in nopunc.split() if word.lower() not in stopwords.words('english')])
-
-ted_talk_df_clean['title'] = ted_talk_df_clean['title'].apply(text_process)
-
-# Extracting the highly attractive words from title
-highly=''
-for k in ted_talk_df_clean[(ted_talk_df_clean['views']>0.8*10**7)]['title'].values:
-  highly=highly+' '+k
-highly_attractive=set(highly.split())
-
-# Extracting the medium attractive words from title
-medium=''
-for k in ted_talk_df_clean[(ted_talk_df_clean['views']>=0.4*10**7) & (ted_talk_df_clean['views']<=0.8*10**7)]['title'].values:
-  medium=medium+' '+k
-medium_attractive=set(medium.split())
-
-# Extracting the least attractive words from title
-least=''
-for k in ted_talk_df_clean[(ted_talk_df_clean['views']<0.4*10**7)]['title'].values:
-  least=least+' '+k
-least_attractive=set(least.split())
-
-highly_attractive_words=highly_attractive-highly_attractive.intersection(medium_attractive)-highly_attractive.intersection(least_attractive)
-print(highly_attractive_words)
-
-medium_attractive_words=medium_attractive-medium_attractive.intersection(highly_attractive)-least_attractive.intersection(least_attractive)
-print(medium_attractive_words)
-
-least_attractive_words=least_attractive-least_attractive.intersection(medium_attractive)-least_attractive.intersection(highly_attractive)
-print(least_attractive_words)
-
-# Title encoding
-title_cat=[]
-for k in ted_talk_df_clean.title:
-  least_attractive_words_match=len(list(set(k.split()).intersection(least_attractive_words)))
-  medium_attractive_words_match=len(list(set(k.split()).intersection(medium_attractive_words)))
-  highly_attractive_words_match=len(list(set(k.split()).intersection(highly_attractive_words)))
-
-  if (least_attractive_words_match>medium_attractive_words_match) & (least_attractive_words_match>highly_attractive_words_match):
-    title_cat.append(0)
-  elif (medium_attractive_words_match>least_attractive_words_match) & (medium_attractive_words_match>highly_attractive_words_match):
-    title_cat.append(1)
-  else:
-    title_cat.append(2)
-
-ted_talk_df_clean['title_cat']=title_cat
-
-ted_talk_df_clean.drop(['title'],axis=1,inplace=True)
-
-# Arranging dependent feature in the last column
-dependent=ted_talk_df_clean.views.values
-ted_talk_df_clean.drop(['views'],axis=1,inplace=True)
-ted_talk_df_clean['views']=dependent
-
-ted_talk_df_clean.head(2)
-
-"""## **3. Treating Anomalies in the Data**
-
-While, we are finding out the **general formula** from the experiences, we should identify the true **outliers** or **exceptional or abnormal experiences** and keep them aside.
-"""
-
-len(ted_talk_df_clean[ted_talk_df_clean['views'] > 1*10**7])
-
-# There are only few experiences with more than 1*10^7 views. Thus we can remove these experiences
-ted_talk_df_clean=ted_talk_df_clean[ted_talk_df_clean['views'] < 1*10**7]
-
-ted_talk_df_clean.shape
-
-"""## **4. Preparation of Input and Output Data**
-
-###7.1 Normalization
-"""
-
-# Creating dependent(output) and independent(input) variable
-dependent_variable='views'
-independent_variables=list(set(ted_talk_df_clean.describe().columns)-{dependent_variable})
-print(independent_variables)
-
-list(set(independent_variables)-{'duration'})
-
-ted_talk_df_clean[list(set(independent_variables)-{'duration'})]
-
-# Creating normalized input and output dataset
-X = np.log10(ted_talk_df_clean[['duration']])
-X[list(set(independent_variables)-{'duration'})]=ted_talk_df_clean[list(set(independent_variables)-{'duration'})]
-
-y = np.log10(ted_talk_df_clean[dependent_variable])
-
-# Checking is there any infinite values after normalization
-X.describe()
-
-y.describe()
-
-# Imputation of infinite values with zero
-for col in X.columns:
-  X[col].replace([np.inf, -np.inf], 0, inplace=True)
-
-y.replace([np.inf, -np.inf], 0, inplace=True)
-
-X.describe()
-
-y.describe()
-
-"""###7.2 Train-Test Spliting"""
-
-# Splitting of the data into Train and Test
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
-
-"""###7.3 Scaling"""
-
-# Standardization of Input Data
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-
-X_train.shape
-
-"""# **5. Building Function with the final model**"""
-
-# Final model training
-model_svr_final=SVR(C= 6, gamma= 0.1)
-model_svr_final.fit(X_train, y_train)
 
 # Writing the function for predicting year of experience
 def final_svr(duration, topics_cat, years_run, speaker_cat, title_cat):
@@ -380,10 +231,8 @@ def final_svr(duration, topics_cat, years_run, speaker_cat, title_cat):
   '''
   try:
 
-    global model_svr_final
-    global scaler
-    global X_train
-
+    X_train, scaler, model_svr_final=data_prep()
+    
     # Creating numpy array from the input
     X_test=np.array([[duration, topics_cat, years_run, speaker_cat, title_cat]])
     # log transformation on duration
