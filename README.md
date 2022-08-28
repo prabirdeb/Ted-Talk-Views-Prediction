@@ -24,6 +24,10 @@ Employed some of the most widely used regression algorithms for this project nam
 
 Final model was Support Vector Regressor selected from Random Forest, Ridge and SVR for predicting ted_talk views, having lowest variance in prediction (0%) and highest r2_score (66%) among all three models . Used RandomizedSearchCV for hyperparameter tuning.
 
+Demo app is deployed in Heroku.
+
+Link: https://tedtalkviews.herokuapp.com/
+
 # Potential Impact and Future Scope:
 
 The building line of this project can be used for big data as there is zero variance in predicting views for Ted Talk videos. 
