@@ -246,6 +246,7 @@ def final_svr(duration, topics_cat, years_run, speaker_cat, title_cat):
     y_test_preds_cat = 10**model_svr_final.predict(X_test)
 
   except:
+    y_test_preds_cat=np.array([0])
     print("Sorry ! Please check your input!")
   
   return np.around(y_test_preds_cat, 2)[0]
