@@ -181,8 +181,6 @@ def data_prep():
   dependent_variable='views'
   independent_variables=list(set(ted_talk_df_clean.describe().columns)-{dependent_variable})
 
-  ted_talk_df_clean[list(set(independent_variables)-{'duration'})]
-
   # Creating normalized input and output dataset
   X = np.log10(ted_talk_df_clean[['duration']])
   X[list(set(independent_variables)-{'duration'})]=ted_talk_df_clean[list(set(independent_variables)-{'duration'})]
