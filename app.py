@@ -251,6 +251,22 @@ def final_svr(duration, topics_cat, years_run, speaker_cat, title_cat):
   
   return np.around(y_test_preds_cat, 2)[0]
 
+import base64
+def add_bg_from_local(image_file):
+    with open(image_file, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read())
+    st.markdown(
+    f"""
+    <style>
+    .stApp {{
+        background-image: url(data:image/{"png"};base64,{encoded_string.decode()});
+        background-size: cover
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+
 # Streamlit Project
 import streamlit as st # All the text cell will be displayed after this import statement
 
@@ -268,6 +284,8 @@ speaker_cat = st.number_input("Speaker Cat (0, 1 or 2)")
 title_cat = st.number_input("Title Cat (0, 1 or 2)")
 
 ans = final_svr(duration, topics_cat, years_run, speaker_cat, title_cat)
+
+add_bg_from_local('back.png') 
 
 if(st.button('PREDICT')):   # display the ans when the submit button is clicked
   st.success(ans)
