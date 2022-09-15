@@ -271,17 +271,19 @@ def add_bg_from_local(image_file):
 import streamlit as st # All the text cell will be displayed after this import statement
 
 st.title("Ted Talk Videos Views Prediction")
-st.header("Note for Topic Cat, Speaker Cat and Title Cat: Highly Favourite:2, Medium Favourite:1, Least Favourite:0 ")
 
-duration = st.number_input("Duration (seconds)")
+duration = st.number_input("Duration (seconds)", min_value=10, step=5)
 
-topics_cat= st.number_input("Topic Cat (0, 1 or 2)")
+topics_cat= st.selectbox("Topic Cat", [0,1,2]) 
+# st.number_input("Topic Cat (0, 1 or 2)")
 
 years_run = st.number_input("Years Run")
 
-speaker_cat = st.number_input("Speaker Cat (0, 1 or 2)")
+speaker_cat = st.selectbox("Speaker Cat", [0,1,2]) 
+# st.number_input("Speaker Cat (0, 1 or 2)")
 
-title_cat = st.number_input("Title Cat (0, 1 or 2)")
+title_cat = st.selectbox("Title Cat", [0,1,2]) 
+# st.number_input("Title Cat (0, 1 or 2)")
 
 ans = final_svr(duration, topics_cat, years_run, speaker_cat, title_cat)
 
